@@ -1,88 +1,48 @@
-const express = require('express'),
-    bodyParser = require('body-parser'),
-    // In order to use PUT HTTP verb to edit item
-    methodOverride = require('method-override'),
-    // Mitigate XSS using sanitizer
-    sanitizer = require('sanitizer'),
-    app = express(),
-    port = 8000
+//dependencies required for the app
+var express = require("express");
+var bodyParser = require("body-parser");
+var app = express();
 
-app.use(bodyParser.urlencoded({
-    extended: false
-}));
-// https: //github.com/expressjs/method-override#custom-logic
-app.use(methodOverride(function (req, res) {
-    if (req.body && typeof req.body === 'object' && '_method' in req.body) {
-        // look in urlencoded POST bodies and delete it
-        let method = req.body._method;
-        delete req.body._method;
-        return method
+app.use(bodyParser.urlencoded({ extended: true }));
+app.set("view engine", "ejs");
+//render css files
+app.use(express.static("public"));
+
+//placeholders for added task
+var task = ["buy socks", "practise with nodejs"];
+//placeholders for removed task
+var complete = ["finish jquery"];
+
+//post route for adding new task 
+app.post("/addtask", function(req, res) {
+    var newTask = req.body.newtask;
+    //add the new task from the post route
+    task.push(newTask);
+    res.redirect("/");
+});
+
+app.post("/removetask", function(req, res) {
+    var completeTask = req.body.check;
+    //check for the "typeof" the different completed task, then add into the complete task
+    if (typeof completeTask === "string") {
+        complete.push(completeTask);
+        //check if the completed task already exits in the task when checked, then remove it
+        task.splice(task.indexOf(completeTask), 1);
+    } else if (typeof completeTask === "object") {
+        for (var i = 0; i < completeTask.length; i++) {
+            complete.push(completeTask[i]);
+            task.splice(task.indexOf(completeTask[i]), 1);
+        }
     }
-}));
+    res.redirect("/");
+});
 
+//render the ejs and display added task, completed task
+app.get("/", function(req, res) {
+    res.render("index", { task: task, complete: complete });
+});
 
-let todolist = [];
-
-/* The to do list and the form are displayed */
-app.get('/todo', function (req, res) {
-        res.render('todo.ejs', {
-            todolist,
-            clickHandler: "func1();"
-        });
-    })
-
-    /* Adding an item to the to do list */
-    .post('/todo/add/', function (req, res) {
-        // Escapes HTML special characters in attribute values as HTML entities
-        let newTodo = sanitizer.escape(req.body.newtodo);
-        if (req.body.newtodo != '') {
-            todolist.push(newTodo);
-        }
-        res.redirect('/todo');
-    })
-
-    /* Deletes an item from the to do list */
-    .get('/todo/delete/:id', function (req, res) {
-        if (req.params.id != '') {
-            todolist.splice(req.params.id, 1);
-        }
-        res.redirect('/todo');
-    })
-
-    // Get a single todo item and render edit page
-    .get('/todo/:id', function (req, res) {
-        let todoIdx = req.params.id;
-        let todo = todolist[todoIdx];
-
-        if (todo) {
-            res.render('edititem.ejs', {
-                todoIdx,
-                todo,
-                clickHandler: "func1();"
-            });
-        } else {
-            res.redirect('/todo');
-        }
-    })
-
-    // Edit item in the todo list 
-    .put('/todo/edit/:id', function (req, res) {
-        let todoIdx = req.params.id;
-        // Escapes HTML special characters in attribute values as HTML entities
-        let editTodo = sanitizer.escape(req.body.editTodo);
-        if (todoIdx != '' && editTodo != '') {
-            todolist[todoIdx] = editTodo;
-        }
-        res.redirect('/todo');
-    })
-    /* Redirects to the to do list if the page requested is not found */
-    .use(function (req, res, next) {
-        res.redirect('/todo');
-    })
-
-    .listen(port, function () {
-        // Logging to console
-        console.log(`Todolist running on http://0.0.0.0:${port}`)
-    });
-// Export app
-module.exports = app;
+//set app to listen on port 3000
+app.listen(3000, function() {
+    console.log("server is running on port 3000");
+});
